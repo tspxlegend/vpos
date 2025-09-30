@@ -1,38 +1,23 @@
-name: Deploy Telebit to VPS
+name: vps
+
 
 on:
   push:
     branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
   workflow_dispatch:
-
+  
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+      
+      - name: Install ngrok
+        run: curl -sL https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-linux-amd64.zip | funzip > ngrok && chmod +x ngrok
 
-      - name: Copy Telebit config to VPS
-        uses: appleboy/scp-action@v0.1.6
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          source: "telebit.json"
-          target: "~/telebit.json"
-
-      - name: Start Telebit on VPS
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          script: |
-            # Install Telebit if not installed
-            if ! command -v telebit &> /dev/null; then
-              curl -s https://get.telebit.io/ | bash
-            fi
-
-            # Start Telebit with the pre-configured file
-            telebit start --config ~/telebit.json --background
+      - name: Start tunnel
+        run: ./ngrok authtoken ${{ secrets.NGROK_TOKEN }} && ./ngrok http 8080 &
