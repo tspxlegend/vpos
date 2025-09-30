@@ -1,20 +1,38 @@
-name: vps
+name: Deploy Telebit to VPS
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
   workflow_dispatch:
-  
+
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-      
-      - name: Run Telebit
-        run: curl -s https://get.telebit.io/ | bash -s -- --non-interactive --run
 
+      - name: Copy Telebit config to VPS
+        uses: appleboy/scp-action@v0.1.6
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "telebit.json"
+          target: "~/telebit.json"
+
+      - name: Start Telebit on VPS
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            # Install Telebit if not installed
+            if ! command -v telebit &> /dev/null; then
+              curl -s https://get.telebit.io/ | bash
+            fi
+
+            # Start Telebit with the pre-configured file
+            telebit start --config ~/telebit.json --background
